@@ -432,6 +432,10 @@
         border: 3px solid rgba(255, 255, 255, 0.25);
         box-shadow: inset 0 10px 25px rgba(255, 255, 255, 0.2), inset 0 -15px 30px rgba(0, 0, 0, 0.6);
         cursor: grab;
+        /* 圖層隔離與 GPU 渲染優化 */
+        contain: layout paint;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
     }
     [data-theme="light"] .globe-chamber {
         background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.95) 0%, rgba(254, 205, 211, 0.6) 100%);
@@ -476,6 +480,12 @@
         height: 100%;
         display: block;
         z-index: 2;
+        /* 開啟獨立 GPU 硬體加速合成層，徹底根除手機滑動閃爍 */
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        will-change: transform;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
     }
 
     /* Machine Base Deck */
@@ -2145,11 +2155,21 @@ const canvas = document.getElementById("physicsCanvas");
 const ctx = canvas.getContext("2d");
 
 // ▬▬▬ [SECTION: PHYSICS CANVAS 2.5D CAPSULE RENDERING] ▬▬▬
+let lastCanvasWidth = 0;
+let lastCanvasHeight = 0;
+
 function syncCanvasSize() {
     const rect = canvas.parentElement.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+    const newW = Math.round(rect.width);
+    const newH = Math.round(rect.height);
+
+    // 關鍵防閃爍機制：僅當寬度改變（或高度巨大變動如旋轉螢幕）時才調整 Canvas
+    // 手機捲動觸發的網址列微小收合一律忽略，避免 GPU 畫布被每秒清空數十次
+    if (newW > 0 && newH > 0 && (newW !== lastCanvasWidth || Math.abs(newH - lastCanvasHeight) > 40)) {
+        canvas.width = newW;
+        canvas.height = newH;
+        lastCanvasWidth = newW;
+        lastCanvasHeight = newH;
         if (worker) {
             worker.postMessage({ type: 'RESIZE', data: { w: canvas.width, h: canvas.height } });
         }
