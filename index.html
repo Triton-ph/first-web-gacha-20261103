@@ -2373,6 +2373,20 @@ async function executeDrawProcess() {
             playerName: playerName
         }]);
 
+        // 【雙保險方案】：立即將本次中獎寫入本機 IndexedDB 作為備援
+        try {
+            await db.addHistory({
+                timestamp: new Date().toISOString(),
+                count: 1,
+                player_name: playerName,
+                prize_name: won.name,
+                rarity: won.rarity || 'N',
+                items: [{ name: won.name, rarity: won.rarity || 'N', player_name: playerName }]
+            });
+        } catch (e) {
+            console.warn("本機備援寫入提示:", e);
+        }
+
         // 重新同步 D1 最新剩餘庫存與中獎紀錄
         await loadAppState();
 
@@ -2958,19 +2972,70 @@ async function checkPlayerRealTimeStatus(name) {
     }
 }
 
-// 實作歷史獲獎全紀錄查詢與更新 (同步維護 cachedWinnersList)
+// 實作歷史獲獎全紀錄查詢與更新 (雙軌制：Cloudflare D1 優先 + 本地 IndexedDB 容錯合併)
 async function renderHistoryList() {
     const container = document.getElementById("history-records-container");
     const modalContainer = document.getElementById("modal-history-list-container");
 
+    let cloudWinners = [];
+    let d1FetchStatus = "未連線";
+
     try {
         const res = await fetch(`/api/winners?t=${Date.now()}`, { cache: "no-store" });
-        const data = await res.json();
-        if (data.success && Array.isArray(data.winners)) {
-            cachedWinnersList = data.winners;
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.winners)) {
+                cloudWinners = data.winners;
+                d1FetchStatus = `D1 連線成功 (${cloudWinners.length} 筆)`;
+            } else {
+                d1FetchStatus = `D1 回傳格式異常: ${JSON.stringify(data)}`;
+            }
+        } else {
+            d1FetchStatus = `HTTP ${res.status} 錯誤`;
         }
     } catch (e) {
+        d1FetchStatus = `連線失敗: ${e.message}`;
         console.warn("無法取得 D1 獲獎名單：", e);
+    }
+
+    // 讀取本地 IndexedDB 作為第二軌備援
+    let localRecords = [];
+    try {
+        const allHist = await db.getAllHistory();
+        if (Array.isArray(allHist)) {
+            allHist.forEach(h => {
+                if (h.player_name && h.prize_name) {
+                    localRecords.push({
+                        player_name: h.player_name,
+                        prize_name: h.prize_name,
+                        rarity: h.rarity || 'N',
+                        drawn_at: h.timestamp,
+                        isLocal: true
+                    });
+                } else if (Array.isArray(h.items)) {
+                    h.items.forEach(it => {
+                        localRecords.push({
+                            player_name: it.player_name || h.player_name || "玩家",
+                            prize_name: it.name || it.prize_name,
+                            rarity: it.rarity || 'N',
+                            drawn_at: h.timestamp,
+                            isLocal: true
+                        });
+                    });
+                }
+            });
+        }
+    } catch (e) {
+        console.warn("讀取本機歷史失敗:", e);
+    }
+
+    // 智能合併：若 D1 有資料則以 D1 為主；若 D1 為空但本地有紀錄，自動採用本地紀錄！
+    if (cloudWinners.length > 0) {
+        cachedWinnersList = cloudWinners;
+    } else if (localRecords.length > 0) {
+        cachedWinnersList = localRecords.reverse();
+    } else {
+        cachedWinnersList = [];
     }
 
     const nameInput = document.getElementById("player-name-input");
@@ -2979,21 +3044,33 @@ async function renderHistoryList() {
     }
 
     if (!cachedWinnersList || cachedWinnersList.length === 0) {
-        const emptyMsg = `<p class="text-center text-xs py-6" style="color: var(--text-dim);">D1 資料庫目前尚未有任何中獎紀錄</p>`;
+        const emptyMsg = `
+            <div class="text-center py-6">
+                <p class="text-xs" style="color: var(--text-dim); margin-bottom: 6px;">目前尚無任何中獎紀錄</p>
+                <span class="text-xs" style="color: var(--text-muted); font-size: 0.7rem;">[狀態: ${d1FetchStatus}]</span>
+            </div>
+        `;
         if (container) container.innerHTML = emptyMsg;
         if (modalContainer) modalContainer.innerHTML = emptyMsg;
         return;
     }
 
-    let html = "";
-    cachedWinnersList.forEach((w, idx) => {
+    let html = `
+        <div class="p-2 rounded mb-2 flex items-center justify-between" style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2);">
+            <span class="text-xs" style="color: #38bdf8; font-weight: bold;">📊 累計獲獎紀錄：共 ${cachedWinnersList.length} 筆</span>
+            <span class="text-xs" style="color: var(--text-muted); font-size: 0.7rem;">${d1FetchStatus}</span>
+        </div>
+    `;
+
+    cachedWinnersList.forEach((w) => {
         const timeStr = w.drawn_at ? new Date(w.drawn_at).toLocaleString("zh-TW") : "剛才";
         const rarityClass = `rarity-${(w.rarity || "n").toLowerCase()}`;
+        const sourceBadge = w.isLocal ? '<span class="text-xs" style="color: var(--accent-gold); font-size: 0.68rem; margin-left: 4px;">(本機暫存)</span>' : '';
         html += `
             <div class="p-3 rounded border" style="background: rgba(255,255,255,0.03); border-color: var(--border-color);">
                 <div class="flex items-center justify-between mb-1">
                     <span class="text-xs font-bold" style="color: #38bdf8;">
-                        👤 獲獎者：<strong>${w.player_name || "匿名"}</strong>
+                        👤 獲獎者：<strong>${w.player_name || "匿名"}</strong>${sourceBadge}
                     </span>
                     <span class="text-xs" style="color: var(--text-dim);">${timeStr}</span>
                 </div>
@@ -3597,30 +3674,23 @@ if (btnSaveLimit) {
 
 window.addEventListener("DOMContentLoaded", init);
 
-// ▬▬▬ [SECTION: PWA SERVICE WORKER REGISTRATION (OFFLINE BLOB)] ▬▬▬
+// ▬▬▬ [SECTION: SERVICE WORKER UNINSTALLER & CACHE PURGER] ▬▬▬
+// 徹底解除任何舊版 Service Worker 與快取，確保 API 100% 直連 Cloudflare D1
 if ('serviceWorker' in navigator) {
-    const swCode = `
-        const CACHE_NAME = 'gashapon-pro-v3-cache';
-        self.addEventListener('install', e => {
-            self.skipWaiting();
-        });
-        self.addEventListener('activate', e => {
-            e.waitUntil(clients.claim());
-        });
-        self.addEventListener('fetch', e => {
-            e.respondWith(
-                caches.match(e.request).then(res => res || fetch(e.request).catch(() => caches.match('./index.html')))
-            );
-        });
-    `;
-    try {
-        const blob = new Blob([swCode], { type: 'text/javascript' });
-        navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => {
-            console.warn("SW register warning:", err);
-        });
-    } catch(err) {
-        console.warn("SW registration error:", err);
-    }
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) {
+            registration.unregister();
+            console.log("Unregistered legacy ServiceWorker:", registration);
+        }
+    });
+}
+if ('caches' in window) {
+    caches.keys().then(names => {
+        for (let name of names) {
+            caches.delete(name);
+            console.log("Deleted legacy Cache:", name);
+        }
+    });
 }
 </script>
 
