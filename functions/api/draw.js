@@ -9,7 +9,7 @@ export async function onRequestPost({ request, env }) {
 
         const db = env.DB;
 
-        // 依據管理者設定之上限檢查該名稱已抽次數
+        // 檢查該玩家已抽次數
         const { results: history } = await db.prepare(
             "SELECT id FROM winners WHERE player_name = ?"
         ).bind(trimmedName).all();
