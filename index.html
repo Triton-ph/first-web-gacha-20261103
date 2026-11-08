@@ -2343,11 +2343,14 @@ async function executeDrawProcess() {
     }
 
     try {
-        // 呼叫 Cloudflare D1 伺服端實名抽獎 API
+        // 呼叫 Cloudflare D1 伺服端實名抽獎 API (加上 maxLimit)
         const res = await fetch("/api/draw", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ playerName: playerName })
+            body: JSON.stringify({ 
+                playerName: playerName,
+                maxLimit: currentDrawLimit 
+            })
         });
 
         const result = await res.json();
@@ -2761,25 +2764,31 @@ document.getElementById("btn-generate-num").addEventListener("click", () => {
 
 // ▬▬▬ [SECTION: NATIVE EXPORT ENGINES (CSV WITH BOM & CANVAS CERTIFICATE)] ▬▬▬
 document.getElementById("btn-export-csv").addEventListener("click", async () => {
-    const records = await db.getAllHistory();
+    let records = cachedWinnersList;
+    if (!records || records.length === 0) {
+        try {
+            const res = await fetch("/api/winners");
+            const data = await res.json();
+            if (data.success) records = data.winners;
+        } catch(e) {}
+    }
+
     if (!records || records.length === 0) {
         alert("⚠️ 尚無抽獎紀錄可匯出");
         return;
     }
 
-    let csv = "\uFEFF序號,抽獎時間,抽中項目,稀有度\r\n";
+    let csv = "\uFEFF序號,獲獎者,抽獎時間,抽中品項,稀有度\r\n";
     records.forEach((r, idx) => {
-        const timeStr = new Date(r.timestamp).toLocaleString("zh-TW");
-        r.items.forEach(it => {
-            csv += `"${idx + 1}","${timeStr}","${it.name}","${it.rarity}"\r\n`;
-        });
+        const timeStr = r.drawn_at ? new Date(r.drawn_at).toLocaleString("zh-TW") : "無紀錄";
+        csv += `"${idx + 1}","${r.player_name || '匿名'}","${timeStr}","${r.prize_name}","${r.rarity}"\r\n`;
     });
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `扭蛋獲獎名冊_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `實名扭蛋獲獎名冊_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 });
@@ -3086,9 +3095,8 @@ window.saveSinglePrizeToD1 = async function(prizeId) {
 };
 
 // ▬▬▬ [SECTION: POPUP MODALS FOR POOL & HISTORY] ▬▬▬
-window.openPoolModal = function() {
-    renderPoolCards();
-    renderOddsTable();
+window.openPoolModal = async function() {
+    await loadAppState();
     document.getElementById("modal-pool-backdrop").classList.add("show");
 };
 
@@ -3096,8 +3104,8 @@ window.closePoolModal = function() {
     document.getElementById("modal-pool-backdrop").classList.remove("show");
 };
 
-window.openHistoryModal = function() {
-    renderHistoryList();
+window.openHistoryModal = async function() {
+    await renderHistoryList();
     document.getElementById("modal-history-backdrop").classList.add("show");
 };
 
@@ -3310,15 +3318,24 @@ const btnShake = document.getElementById("btn-shake-machine"); if (btnShake) btn
     setTimeout(() => chassis.style.animation = "", 360);
 };
 
-// Tab Switching
+// Tab Switching (點擊分頁時自動同步最新 D1 資料)
 document.querySelectorAll(".admin-tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
         document.querySelectorAll(".admin-tab-btn").forEach(b => b.classList.remove("active"));
         document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
         btn.classList.add("active");
         const tabId = btn.getAttribute("data-tab");
         const target = document.getElementById(tabId);
         if (target) target.classList.add("active");
+
+        if (tabId === "tab-odds") {
+            renderOddsTable();
+        } else if (tabId === "tab-history") {
+            await renderHistoryList();
+        } else if (tabId === "tab-list") {
+            renderD1PoolEditor();
+            renderPoolCards();
+        }
     });
 });
 
