@@ -195,15 +195,20 @@
 
     /* ▬▬▬ [SECTION: HEADER & BRAND DEFENSE] ▬▬▬ */
     header {
-        background: var(--bg-card);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
+        background: #0b1120;
         border-bottom: 1px solid var(--border-color);
         padding: 0.75rem 1.5rem;
         position: sticky;
         top: 0;
         z-index: 100;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        /* 根除 sticky 導航列與畫布重疊時的硬體模糊撕裂 */
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+    }
+    [data-theme="light"] header {
+        background: #ffffff;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.06);
     }
 
     .brand-container {
@@ -698,17 +703,20 @@
     /* ▬▬▬ [SECTION: ADMIN & DASHBOARD PANEL] ▬▬▬ */
     .admin-panel {
         flex: 1 1 0%;
-        background: var(--bg-card);
+        background: #0f172a;
         border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
         box-shadow: var(--shadow);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
         display: flex;
         flex-direction: column;
         min-height: 560px;
         overflow: hidden;
         position: relative;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+    }
+    [data-theme="light"] .admin-panel {
+        background: #ffffff;
     }
 
     /* Admin Password Lock Overlay */
@@ -3616,8 +3624,13 @@ async function init() {
         if (type === 'STATE') {
             activeBalls = balls;
             renderCanvas(balls);
+            // 物理休眠判定：當球體靜止時徹底停止清空與重繪，滾動時由 GPU 靜態呈現零閃爍
             if (isSleeping && !isDrawing) {
                 isWorkerSleeping = true;
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
             }
         }
     };
