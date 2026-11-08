@@ -1,7 +1,20 @@
 export async function onRequestPost({ request, env }) {
     try {
-        const { action, prize, prizes, resetWinners } = await request.json();
+        const body = await request.json();
+        const { action, prize, prizes, resetWinners, newPin, newLimit } = body;
         const db = env.DB;
+
+        // 儲存全域密碼至 D1 (所有裝置同步)
+        if (action === 'save_pin') {
+            await db.prepare("INSERT OR REPLACE INTO system_config (key, value) VALUES ('admin_pin', ?)").bind(newPin).run();
+            return Response.json({ success: true, message: "全域管理密碼已同步至雲端 D1！" });
+        }
+
+        // 儲存全域次數限制至 D1 (所有裝置同步)
+        if (action === 'save_limit') {
+            await db.prepare("INSERT OR REPLACE INTO system_config (key, value) VALUES ('draw_limit', ?)").bind(String(newLimit)).run();
+            return Response.json({ success: true, message: "全域抽獎次數限制已同步至雲端 D1！" });
+        }
 
         if (action === 'reset_pool') {
             await db.prepare("UPDATE prizes SET remaining = initial_stock").run();
