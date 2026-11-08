@@ -3266,13 +3266,30 @@ document.getElementById("btn-lock-admin-now").onclick = () => {
 document.getElementById("btn-save-new-pin").onclick = async () => {
     const newPin = document.getElementById("setting-new-pin").value.trim();
     if (newPin.length < 4) {
-        alert("⚠️ PIN 碼長度至少需 4 位數");
+        alert("⚠️ 管理密碼長度至少需 4 位數！");
         return;
     }
-    adminPassword = newPin;
-    await db.set("app_state", "admin_pin", adminPassword);
-    document.getElementById("setting-new-pin").value = "";
-    alert("✅ 成功變更後台管理密碼！");
+
+    try {
+        const res = await fetch("/api/admin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                action: "save_pin",
+                newPin: newPin
+            })
+        });
+        const result = await res.json();
+        if (result.success) {
+            adminPassword = newPin;
+            document.getElementById("setting-new-pin").value = "";
+            alert("✅ 全域管理密碼已即時儲存至 D1 資料庫！(所有使用者的手機與電腦已同步變更)");
+        } else {
+            alert("儲存密碼失敗：" + result.error);
+        }
+    } catch (e) {
+        alert("連線 D1 失敗：" + e.message);
+    }
 };
 
 // ▬▬▬ [SECTION: SYSTEM MAINTENANCE & BACKUP/RESTORE] ▬▬▬
@@ -3503,14 +3520,25 @@ async function saveAppState() {
 }
 
 async function loadAppState() {
-    const savedLimit = await db.get("app_state", "draw_limit");
-    if (savedLimit) {
-        currentDrawLimit = parseInt(savedLimit, 10) || 1;
-        const limInput = document.getElementById("setting-draw-limit");
-        if (limInput) limInput.value = currentDrawLimit;
+    // 優先從 D1 雲端拉取全域密碼與次數限制 (所有手機/電腦同步)
+    try {
+        const cfgRes = await fetch(`/api/winners?t=${Date.now()}`, { cache: "no-store" });
+        if (cfgRes.ok) {
+            const cfgData = await cfgRes.json();
+            if (cfgData.adminPin) {
+                adminPassword = cfgData.adminPin;
+            }
+            if (cfgData.drawLimit) {
+                updateDrawLimitUI(cfgData.drawLimit);
+            }
+            if (Array.isArray(cfgData.winners)) {
+                cachedWinnersList = cfgData.winners;
+            }
+        }
+    } catch (e) {
+        console.warn("無法從 D1 讀取全域設定，使用預設值:", e);
+        updateDrawLimitUI(1);
     }
-    const savedPin = await db.get("app_state", "admin_pin");
-    if (savedPin) adminPassword = savedPin;
 
     const savedTheme = await db.get("app_state", "theme");
     if (savedTheme) {
@@ -3666,9 +3694,26 @@ if (btnSaveLimit) {
             alert("次數限制至少需為 1 次！");
             return;
         }
-        updateDrawLimitUI(newLim);
-        await db.set("app_state", "draw_limit", currentDrawLimit);
-        alert(`✅ 抽獎次數限制已成功變更為：每人 ${currentDrawLimit} 次！`);
+
+        try {
+            const res = await fetch("/api/admin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "save_limit",
+                    newLimit: newLim
+                })
+            });
+            const result = await res.json();
+            if (result.success) {
+                updateDrawLimitUI(newLim);
+                alert(`✅ 全域抽獎次數限制已即時更新至 D1！(所有玩家立即同步為限抽 ${newLim} 次)`);
+            } else {
+                alert("儲存限制次數失敗：" + result.error);
+            }
+        } catch (e) {
+            alert("連線 D1 失敗：" + e.message);
+        }
     };
 }
 
