@@ -1256,9 +1256,9 @@
                 <!-- 操控底座 -->
                 <div class="machine-deck">
                     <div class="deck-top-row">
-                        <div class="coin-slot-badge">
+                        <div class="coin-slot-badge" id="coin-slot-badge" style="transition: all 0.3s ease;">
                             <div class="coin-slot-line"></div>
-                            <span>1 COIN / DRAW</span>
+                            <span id="coin-slot-text">1 COIN / DRAW</span>
                         </div>
                         <div class="machine-counter-badge">
                             已轉動: <span id="stat-total-turns" style="color: #f43f5e;">0</span> 次
@@ -1396,9 +1396,44 @@
                     <div class="flex items-center justify-between mb-2">
                         <div>
                             <h4 class="font-bold text-sm" style="color: #38bdf8;">🛠️ D1 機台現存獎池即時管理</h4>
-                            <p class="text-xs" style="color: var(--text-muted);">可直接修改品項、稀有度、剩餘庫存並即時回寫 D1</p>
+                            <p class="text-xs" style="color: var(--text-muted);">可直接新增、修改品項、剩餘庫存並即時回寫 D1</p>
                         </div>
-                        <button id="btn-fetch-d1-pool" class="btn btn-subtle text-xs py-1">🔄 同步 D1 最新狀態</button>
+                        <div class="flex gap-2">
+                            <button id="btn-toggle-add-prize-form" class="btn btn-primary text-xs py-1" style="background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);">➕ 新增獨立獎項</button>
+                            <button id="btn-fetch-d1-pool" class="btn btn-subtle text-xs py-1">🔄 同步 D1 最新狀態</button>
+                        </div>
+                    </div>
+
+                    <!-- 新增獨立獎項表單 (預設隱藏，點擊按鈕展開) -->
+                    <div id="add-prize-form-panel" class="p-3 rounded mb-3 hidden" style="background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(56, 189, 248, 0.35);">
+                        <h5 class="font-bold text-xs mb-2" style="color: #38bdf8;">✨ 新增獨立獎項至 D1 資料庫</h5>
+                        <div class="grid gap-2" style="grid-template-columns: 2fr 1fr 1fr 1fr auto;">
+                            <div>
+                                <label class="text-xs" style="color: var(--text-muted); display: block; margin-bottom: 2px;">獎品名稱</label>
+                                <input type="text" id="new-prize-name" class="custom-input text-xs" placeholder="例如：限定皮卡丘吊飾">
+                            </div>
+                            <div>
+                                <label class="text-xs" style="color: var(--text-muted); display: block; margin-bottom: 2px;">稀有度</label>
+                                <select id="new-prize-rarity" class="custom-select text-xs" style="color: #0f172a; background: #ffffff;">
+                                    <option value="UR" style="color: #000;">UR</option>
+                                    <option value="SSR" style="color: #000;">SSR</option>
+                                    <option value="SR" style="color: #000;">SR</option>
+                                    <option value="R" style="color: #000;">R</option>
+                                    <option value="N" selected style="color: #000;">N</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs" style="color: var(--text-muted); display: block; margin-bottom: 2px;">庫存數量</label>
+                                <input type="number" id="new-prize-stock" value="5" min="1" class="custom-input text-xs text-center">
+                            </div>
+                            <div>
+                                <label class="text-xs" style="color: var(--text-muted); display: block; margin-bottom: 2px;">抽獎權重</label>
+                                <input type="number" id="new-prize-weight" value="5" min="0.1" step="0.1" class="custom-input text-xs text-center">
+                            </div>
+                            <div style="display: flex; align-items: flex-end;">
+                                <button id="btn-submit-new-prize" class="btn btn-gold text-xs py-2 px-3 font-bold">確認新增</button>
+                            </div>
+                        </div>
                     </div>
                     <div id="d1-pool-editor-table" style="max-height: 260px; overflow-y: auto;">
                         <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
@@ -1479,10 +1514,22 @@
             <!-- 分頁 4: 系統設定與維護 -->
             <div id="tab-settings" class="tab-pane">
                 <div class="flex flex-col gap-4">
+                    <div class="p-4 rounded border" style="background: rgba(56, 189, 248, 0.04); border-color: rgba(56, 189, 248, 0.25);">
+                        <h4 class="font-bold text-sm mb-1" style="color: #38bdf8;">🎯 實名扭蛋次數限制設定</h4>
+                        <p class="text-xs mb-3" style="color: var(--text-muted);">設定每位實名玩家允許抽取扭蛋的總次數上限（預設 1 次）。</p>
+                        <div class="flex items-center gap-3">
+                            <label class="text-xs font-bold" style="white-space: nowrap;">每位玩家限抽次數：</label>
+                            <input type="number" id="setting-draw-limit" class="custom-input text-center text-sm" min="1" max="99" value="1" style="width: 80px;">
+                            <span class="text-xs" style="color: var(--text-muted);">次</span>
+                            <button id="btn-save-draw-limit" class="btn btn-primary text-xs py-2 px-4 font-bold">儲存次數設定</button>
+                        </div>
+                        <p class="text-xs mt-2" style="color: var(--accent-gold);">💡 儲存後立即連動機台實名驗證，動態顯示玩家尚餘抽獎資格與次數。</p>
+                    </div>
+
                     <div class="p-4 rounded border" style="background: rgba(255,255,255,0.02);">
                         <h4 class="font-bold text-sm mb-2">🔐 管理後台安全設定</h4>
                         <div class="flex gap-2">
-                            <input type="password" id="setting-new-pin" class="custom-input text-xs" maxlength="6" placeholder="輸入新 4~6 位 PIN 碼">
+                            <input type="password" id="setting-new-pin" class="custom-input text-xs" maxlength="20" placeholder="輸入新密碼">
                             <button id="btn-save-new-pin" class="btn btn-primary text-xs whitespace-nowrap">儲存密碼</button>
                         </div>
                     </div>
@@ -2470,60 +2517,69 @@ function startConfettiCelebration(isGrand) {
 
 // ▬▬▬ [SECTION: DATA IMPORT, AVATAR MATCHING & ODDS CALC] ▬▬▬
 function updateStockUI() {
-    const total = prizePool.length;
-    const allowRepeatEl = document.getElementById("check-allow-repeat"); const allowRepeat = allowRepeatEl ? allowRepeatEl.checked : false;
-    const remaining = allowRepeat ? total : remainingPool.length;
-    document.getElementById("stock-indicator").textContent = `庫存: ${remaining} / ${total}`;
-    document.getElementById("pool-total-badge").textContent = total;
+    const totalTypes = prizePool.length;
+    const totalRemainingPcs = prizePool.reduce((sum, p) => sum + (parseInt(p.remaining, 10) || 0), 0);
+    const totalInitialPcs = prizePool.reduce((sum, p) => sum + (parseInt(p.initial_stock, 10) || parseInt(p.remaining, 10) || 0), 0);
+
+    const stockEl = document.getElementById("stock-indicator");
+    if (stockEl) stockEl.textContent = `實體庫存: ${totalRemainingPcs} / ${totalInitialPcs} (品項: ${totalTypes})`;
+
+    const badgeEl = document.getElementById("pool-total-badge");
+    if (badgeEl) badgeEl.textContent = totalTypes;
+
     renderOddsTable();
 }
 
 function renderOddsTable() {
     const tbody = document.getElementById("odds-table-body");
     const modalTbody = document.getElementById("modal-odds-table-body");
-    const allowRepeatEl = document.getElementById("check-allow-repeat"); const allowRepeat = allowRepeatEl ? allowRepeatEl.checked : false;
-    const targetPool = allowRepeat ? prizePool : remainingPool;
 
-    if (!targetPool || targetPool.length === 0) {
+    if (!prizePool || prizePool.length === 0) {
         const emptyHtml = `<tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--text-dim);">目前獎池為空</td></tr>`;
-        tbody.innerHTML = emptyHtml;
+        if (tbody) tbody.innerHTML = emptyHtml;
         if (modalTbody) modalTbody.innerHTML = emptyHtml;
-        document.getElementById("odds-stock-status").textContent = "總計庫存: 0";
+        const statusEl = document.getElementById("odds-stock-status");
+        if (statusEl) statusEl.textContent = "總計庫存: 0";
         const descEl = document.getElementById("modal-pool-stock-desc");
         if (descEl) descEl.textContent = "目前獎池為空，請由後台建立獎品名單。";
         return;
     }
 
-    const totalWeight = targetPool.reduce((sum, item) => sum + (parseFloat(item.weight) || 1), 0);
-    document.getElementById("odds-stock-status").textContent = `總計庫存: ${targetPool.length} (總權重: ${totalWeight})`;
-    const descEl = document.getElementById("modal-pool-stock-desc");
-    if (descEl) descEl.textContent = `當前未抽出庫存: ${targetPool.length} 顆  |  總權重基數: ${totalWeight}`;
+    // 計算尚有庫存 (remaining > 0) 的總權重與剩餘顆數
+    const activePrizes = prizePool.filter(p => (parseInt(p.remaining, 10) || 0) > 0);
+    const totalRemainingPcs = prizePool.reduce((sum, p) => sum + (parseInt(p.remaining, 10) || 0), 0);
+    const totalWeight = activePrizes.reduce((sum, p) => sum + (parseFloat(p.weight) || 1), 0);
 
-    const map = new Map();
-    targetPool.forEach(item => {
-        const key = `${item.name}__${item.rarity || 'N'}`;
-        if (!map.has(key)) {
-            map.set(key, { name: item.name, rarity: item.rarity || 'N', count: 0, weight: 0 });
-        }
-        const entry = map.get(key);
-        entry.count++;
-        entry.weight += (parseFloat(item.weight) || 1);
-    });
+    const statusEl = document.getElementById("odds-stock-status");
+    if (statusEl) statusEl.textContent = `現存總件數: ${totalRemainingPcs} 顆 (總權重: ${totalWeight.toFixed(1)})`;
+    const descEl = document.getElementById("modal-pool-stock-desc");
+    if (descEl) descEl.textContent = `D1 即時剩餘庫存: ${totalRemainingPcs} 顆  |  有效抽獎權重基數: ${totalWeight.toFixed(1)}`;
 
     let html = "";
-    map.forEach(entry => {
-        const pct = totalWeight > 0 ? ((entry.weight / totalWeight) * 100).toFixed(2) : "0.00";
-        const rarityClass = `rarity-${entry.rarity.toLowerCase()}`;
+    prizePool.forEach(p => {
+        const rem = parseInt(p.remaining, 10) || 0;
+        const initStock = parseInt(p.initial_stock, 10) || rem;
+        const pct = (rem > 0 && totalWeight > 0) ? (((parseFloat(p.weight) || 1) / totalWeight) * 100).toFixed(2) : "0.00";
+        const rarityClass = `rarity-${(p.rarity || 'n').toLowerCase()}`;
+        const isSoldOut = rem === 0;
+
         html += `
-            <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 10px; font-weight: 700;">${entry.name}</td>
-                <td style="padding: 10px;"><span class="rarity-pill ${rarityClass}">${entry.rarity}</span></td>
-                <td style="padding: 10px; text-align: center;">${entry.count}</td>
-                <td style="padding: 10px; text-align: right; font-weight: 700; color: var(--primary);">${pct}%</td>
+            <tr style="border-bottom: 1px solid var(--border-color); ${isSoldOut ? 'opacity: 0.45;' : ''}">
+                <td style="padding: 10px; font-weight: 700;">
+                    ${p.name}
+                    ${isSoldOut ? '<span style="color: #ef4444; font-size: 0.72rem; margin-left: 6px;">[已抽完]</span>' : ''}
+                </td>
+                <td style="padding: 10px;"><span class="rarity-pill ${rarityClass}">${p.rarity}</span></td>
+                <td style="padding: 10px; text-align: center; font-weight: bold; color: ${rem > 0 ? '#38bdf8' : 'var(--text-dim)'};">
+                    ${rem} <span style="font-size: 0.75rem; color: var(--text-dim);">/ ${initStock}</span>
+                </td>
+                <td style="padding: 10px; text-align: right; font-weight: 700; color: ${rem > 0 ? 'var(--primary)' : 'var(--text-dim)'};">
+                    ${pct}%
+                </td>
             </tr>
         `;
     });
-    tbody.innerHTML = html;
+    if (tbody) tbody.innerHTML = html;
     if (modalTbody) modalTbody.innerHTML = html;
 }
 
@@ -2818,23 +2874,78 @@ document.getElementById("btn-export-cert-img").addEventListener("click", async (
     }, "image/png");
 });
 
-// Render History Records list from Cloudflare D1 (/api/winners)
+
+// ▬▬▬ [SECTION: REAL-NAME REACTIVE COIN & DRAW LIMIT CONTROLLER] ▬▬▬
+let currentDrawLimit = 1;
+let cachedWinnersList = [];
+
+async function checkPlayerRealTimeStatus(name) {
+    const trimmed = (name || "").trim();
+    const coinBadge = document.getElementById("coin-slot-badge");
+    const coinText = document.getElementById("coin-slot-text");
+    const turnsSpan = document.getElementById("stat-total-turns");
+
+    if (!trimmed) {
+        if (coinBadge) {
+            coinBadge.style.borderColor = "#fbcfe8";
+            coinBadge.style.background = "#1e1b2e";
+        }
+        if (coinText) {
+            coinText.style.color = "#fde047";
+            coinText.textContent = `${currentDrawLimit} COIN / DRAW`;
+        }
+        if (turnsSpan) turnsSpan.textContent = "0";
+        return;
+    }
+
+    // 計算該玩家在 D1 已抽獎次數
+    const historyCount = cachedWinnersList.filter(w => (w.player_name || "").trim().toLowerCase() === trimmed.toLowerCase()).length;
+    const remainingChances = Math.max(0, currentDrawLimit - historyCount);
+
+    if (turnsSpan) turnsSpan.textContent = historyCount;
+
+    if (remainingChances > 0) {
+        if (coinBadge) {
+            coinBadge.style.borderColor = "#38bdf8";
+            coinBadge.style.background = "rgba(56, 189, 248, 0.15)";
+        }
+        if (coinText) {
+            coinText.style.color = "#38bdf8";
+            coinText.textContent = `${remainingChances} COIN / ${currentDrawLimit}`;
+        }
+    } else {
+        if (coinBadge) {
+            coinBadge.style.borderColor = "#ef4444";
+            coinBadge.style.background = "rgba(239, 68, 68, 0.2)";
+        }
+        if (coinText) {
+            coinText.style.color = "#ef4444";
+            coinText.textContent = `0 COIN (已達上限)`;
+        }
+    }
+}
+
+// 實作歷史獲獎全紀錄查詢與更新 (同步維護 cachedWinnersList)
 async function renderHistoryList() {
     const container = document.getElementById("history-records-container");
     const modalContainer = document.getElementById("modal-history-list-container");
 
-    let winners = [];
     try {
         const res = await fetch("/api/winners");
         const data = await res.json();
         if (data.success && Array.isArray(data.winners)) {
-            winners = data.winners;
+            cachedWinnersList = data.winners;
         }
     } catch (e) {
         console.warn("無法取得 D1 獲獎名單：", e);
     }
 
-    if (!winners || winners.length === 0) {
+    const nameInput = document.getElementById("player-name-input");
+    if (nameInput) {
+        checkPlayerRealTimeStatus(nameInput.value);
+    }
+
+    if (!cachedWinnersList || cachedWinnersList.length === 0) {
         const emptyMsg = `<p class="text-center text-xs py-6" style="color: var(--text-dim);">D1 資料庫目前尚未有任何中獎紀錄</p>`;
         if (container) container.innerHTML = emptyMsg;
         if (modalContainer) modalContainer.innerHTML = emptyMsg;
@@ -2842,7 +2953,7 @@ async function renderHistoryList() {
     }
 
     let html = "";
-    winners.forEach((w, idx) => {
+    cachedWinnersList.forEach((w, idx) => {
         const timeStr = w.drawn_at ? new Date(w.drawn_at).toLocaleString("zh-TW") : "剛才";
         const rarityClass = `rarity-${(w.rarity || "n").toLowerCase()}`;
         html += `
@@ -2865,31 +2976,30 @@ async function renderHistoryList() {
     if (modalContainer) modalContainer.innerHTML = html;
 }
 
-// 實作 D1 獎池即時編輯器渲染與回寫函數
+// 實作 D1 獎池即時編輯器渲染與回寫函數 (黑色字體稀有度下拉選單)
 function renderD1PoolEditor() {
     const tbody = document.getElementById("d1-prizes-edit-tbody");
     if (!tbody) return;
 
     if (!prizePool || prizePool.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:12px; color:var(--text-dim);">D1 目前無獎品</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:12px; color:var(--text-dim);">D1 資料庫目前為空</td></tr>`;
         return;
     }
 
     let rows = "";
-    prizePool.forEach((p, index) => {
-        const rarityClass = `rarity-${(p.rarity || "n").toLowerCase()}`;
+    prizePool.forEach((p) => {
         rows += `
             <tr style="border-bottom: 1px solid var(--border-color);">
                 <td style="padding: 6px;">
-                    <input type="text" id="edit-name-${p.id}" value="${p.name}" class="custom-input text-xs" style="padding: 2px 4px;">
+                    <input type="text" id="edit-name-${p.id}" value="${p.name}" class="custom-input text-xs" style="padding: 2px 6px;">
                 </td>
                 <td style="padding: 6px;">
-                    <select id="edit-rarity-${p.id}" class="custom-select text-xs" style="padding: 2px;">
-                        <option value="UR" ${p.rarity==="UR"?"selected":""}>UR</option>
-                        <option value="SSR" ${p.rarity==="SSR"?"selected":""}>SSR</option>
-                        <option value="SR" ${p.rarity==="SR"?"selected":""}>SR</option>
-                        <option value="R" ${p.rarity==="R"?"selected":""}>R</option>
-                        <option value="N" ${p.rarity==="N"?"selected":""}>N</option>
+                    <select id="edit-rarity-${p.id}" class="custom-select text-xs" style="padding: 2px 4px; color: #000000 !important; background-color: #ffffff !important; font-weight: bold;">
+                        <option value="UR" ${p.rarity==="UR"?"selected":""} style="color: #000000 !important; background: #ffffff;">UR</option>
+                        <option value="SSR" ${p.rarity==="SSR"?"selected":""} style="color: #000000 !important; background: #ffffff;">SSR</option>
+                        <option value="SR" ${p.rarity==="SR"?"selected":""} style="color: #000000 !important; background: #ffffff;">SR</option>
+                        <option value="R" ${p.rarity==="R"?"selected":""} style="color: #000000 !important; background: #ffffff;">R</option>
+                        <option value="N" ${p.rarity==="N"?"selected":""} style="color: #000000 !important; background: #ffffff;">N</option>
                     </select>
                 </td>
                 <td style="padding: 6px;">
@@ -2898,14 +3008,40 @@ function renderD1PoolEditor() {
                 <td style="padding: 6px;">
                     <input type="number" id="edit-init-${p.id}" value="${p.initial_stock || p.remaining}" min="0" class="custom-input text-xs text-center" style="padding: 2px 4px;">
                 </td>
-                <td style="padding: 6px; text-align: center;">
+                <td style="padding: 6px; text-align: center; white-space: nowrap;">
                     <button class="btn btn-primary text-xs py-1 px-2" onclick="saveSinglePrizeToD1('${p.id}')">儲存</button>
+                    <button class="btn btn-subtle text-xs py-1 px-2" style="color: #ef4444;" onclick="deleteSinglePrizeFromD1('${p.id}')">刪除</button>
                 </td>
             </tr>
         `;
     });
     tbody.innerHTML = rows;
 }
+
+window.deleteSinglePrizeFromD1 = async function(prizeId) {
+    const p = prizePool.find(item => item.id === prizeId);
+    if (!confirm(`確定要從 D1 資料庫永久刪除「${p ? p.name : prizeId}」嗎？`)) return;
+
+    try {
+        const res = await fetch("/api/admin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                action: "delete_prize",
+                prize: { id: prizeId }
+            })
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ 獎項已成功自 D1 刪除！");
+            await loadAppState();
+        } else {
+            alert("刪除失敗：" + result.error);
+        }
+    } catch (e) {
+        alert("連線 D1 失敗：" + e.message);
+    }
+};
 
 window.saveSinglePrizeToD1 = async function(prizeId) {
     const p = prizePool.find(item => item.id === prizeId);
@@ -3249,6 +3385,12 @@ async function saveAppState() {
 }
 
 async function loadAppState() {
+    const savedLimit = await db.get("app_state", "draw_limit");
+    if (savedLimit) {
+        currentDrawLimit = parseInt(savedLimit, 10) || 1;
+        const limInput = document.getElementById("setting-draw-limit");
+        if (limInput) limInput.value = currentDrawLimit;
+    }
     const savedPin = await db.get("app_state", "admin_pin");
     if (savedPin) adminPassword = savedPin;
 
@@ -3330,6 +3472,91 @@ async function init() {
             worker.postMessage({ type: 'IMPULSE', data: { forceX: 10, forceY: 15 } });
         }
     });
+}
+
+
+// 監聽抽獎實名認證輸入，即時反映 1 COIN / 0 COIN
+const nameInputEl = document.getElementById("player-name-input");
+if (nameInputEl) {
+    nameInputEl.addEventListener("input", (e) => {
+        checkPlayerRealTimeStatus(e.target.value);
+    });
+}
+
+// 展開 / 收合新增獨立獎項面板
+const btnToggleAdd = document.getElementById("btn-toggle-add-prize-form");
+if (btnToggleAdd) {
+    btnToggleAdd.onclick = () => {
+        const panel = document.getElementById("add-prize-form-panel");
+        if (panel) panel.classList.toggle("hidden");
+    };
+}
+
+// 提交新增獨立獎項至 D1
+const btnSubmitNew = document.getElementById("btn-submit-new-prize");
+if (btnSubmitNew) {
+    btnSubmitNew.onclick = async () => {
+        const name = (document.getElementById("new-prize-name")?.value || "").trim();
+        const rarity = document.getElementById("new-prize-rarity")?.value || "N";
+        const stock = parseInt(document.getElementById("new-prize-stock")?.value, 10) || 1;
+        const weight = parseFloat(document.getElementById("new-prize-weight")?.value) || 1;
+
+        if (!name) {
+            alert("⚠️ 請輸入獎品名稱！");
+            return;
+        }
+
+        const newId = `p_${Date.now()}`;
+        try {
+            const res = await fetch("/api/admin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "add_prize",
+                    prize: {
+                        id: newId,
+                        name: name,
+                        rarity: rarity,
+                        weight: weight,
+                        initial_stock: stock,
+                        remaining: stock,
+                        image_url: "./LOGO.png"
+                    }
+                })
+            });
+            const result = await res.json();
+            if (result.success) {
+                alert(`✅ 已成功將「${name}」新增至 D1 資料庫！`);
+                document.getElementById("new-prize-name").value = "";
+                document.getElementById("add-prize-form-panel").classList.add("hidden");
+                await loadAppState();
+            } else {
+                alert("新增失敗：" + result.error);
+            }
+        } catch (e) {
+            alert("連線 D1 失敗：" + e.message);
+        }
+    };
+}
+
+// 管理者調整所有名稱的扭蛋次數限制
+const btnSaveLimit = document.getElementById("btn-save-draw-limit");
+if (btnSaveLimit) {
+    btnSaveLimit.onclick = async () => {
+        const newLim = parseInt(document.getElementById("setting-draw-limit")?.value, 10) || 1;
+        if (newLim < 1) {
+            alert("次數限制至少需為 1 次！");
+            return;
+        }
+        currentDrawLimit = newLim;
+        await db.set("app_state", "draw_limit", currentDrawLimit);
+
+        // 即時反映至前端機台
+        const nameInput = document.getElementById("player-name-input");
+        if (nameInput) checkPlayerRealTimeStatus(nameInput.value);
+
+        alert(`✅ 抽獎次數限制已成功變更為：每人 ${currentDrawLimit} 次！`);
+    };
 }
 
 window.addEventListener("DOMContentLoaded", init);
