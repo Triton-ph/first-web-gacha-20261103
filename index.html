@@ -1288,7 +1288,7 @@
                 <div class="draw-selector-card" style="flex-direction: column; align-items: stretch; gap: 8px;">
                     <div class="flex items-center justify-between">
                         <span class="font-bold text-sm" style="color: var(--primary);">👤 抽獎實名認證</span>
-                        <span class="text-xs" style="color: var(--accent-gold); font-weight: bold;">每人限抽 1 次</span>
+                        <span class="text-xs" id="draw-limit-badge-text" style="color: var(--accent-gold); font-weight: bold;">每人限抽 1 次</span>
                     </div>
                     <input type="text" id="player-name-input" class="custom-input text-sm" placeholder="請輸入您的真實姓名或暱稱 (必填)" maxlength="20" style="background: rgba(255,255,255,0.08); border-color: var(--primary);">
                 </div>
@@ -2362,7 +2362,7 @@ async function executeDrawProcess() {
 
         const won = result.wonItem;
         totalMachineTurns += 1;
-        document.getElementById("stat-total-turns").textContent = totalMachineTurns;
+        checkPlayerRealTimeStatus(playerName);
 
         // 撥放出蛋音效與掉落動畫
         sfx.playDrop();
@@ -2767,7 +2767,7 @@ document.getElementById("btn-export-csv").addEventListener("click", async () => 
     let records = cachedWinnersList;
     if (!records || records.length === 0) {
         try {
-            const res = await fetch("/api/winners");
+            const res = await fetch(`/api/winners?t=${Date.now()}`, { cache: "no-store" });
             const data = await res.json();
             if (data.success) records = data.winners;
         } catch(e) {}
@@ -2884,6 +2884,23 @@ document.getElementById("btn-export-cert-img").addEventListener("click", async (
 });
 
 
+
+function updateDrawLimitUI(newLimit) {
+    currentDrawLimit = parseInt(newLimit, 10) || 1;
+    const badgeEl = document.getElementById("draw-limit-badge-text");
+    if (badgeEl) {
+        badgeEl.textContent = `每人限抽 ${currentDrawLimit} 次`;
+    }
+    const limInput = document.getElementById("setting-draw-limit");
+    if (limInput) {
+        limInput.value = currentDrawLimit;
+    }
+    const nameInput = document.getElementById("player-name-input");
+    if (nameInput) {
+        checkPlayerRealTimeStatus(nameInput.value);
+    }
+}
+
 // ▬▬▬ [SECTION: REAL-NAME REACTIVE COIN & DRAW LIMIT CONTROLLER] ▬▬▬
 let currentDrawLimit = 1;
 let cachedWinnersList = [];
@@ -2907,11 +2924,18 @@ async function checkPlayerRealTimeStatus(name) {
         return;
     }
 
-    // 計算該玩家在 D1 已抽獎次數
-    const historyCount = cachedWinnersList.filter(w => (w.player_name || "").trim().toLowerCase() === trimmed.toLowerCase()).length;
+    // 精確比對：過濾出該玩家在 D1 的歷史中獎次數
+    const historyCount = cachedWinnersList.filter(w => {
+        const pName = (w.player_name || "").trim().toLowerCase();
+        return pName === trimmed.toLowerCase();
+    }).length;
+
     const remainingChances = Math.max(0, currentDrawLimit - historyCount);
 
-    if (turnsSpan) turnsSpan.textContent = historyCount;
+    // 即時更新底座的「已轉動: X 次」
+    if (turnsSpan) {
+        turnsSpan.textContent = historyCount;
+    }
 
     if (remainingChances > 0) {
         if (coinBadge) {
@@ -2940,7 +2964,7 @@ async function renderHistoryList() {
     const modalContainer = document.getElementById("modal-history-list-container");
 
     try {
-        const res = await fetch("/api/winners");
+        const res = await fetch(`/api/winners?t=${Date.now()}`, { cache: "no-store" });
         const data = await res.json();
         if (data.success && Array.isArray(data.winners)) {
             cachedWinnersList = data.winners;
@@ -3426,7 +3450,7 @@ async function loadAppState() {
 
     // 優先從 Cloudflare D1 拉取最新獎池與庫存
     try {
-        const res = await fetch("/api/pool");
+        const res = await fetch(`/api/pool?t=${Date.now()}`, { cache: "no-store" });
         const data = await res.json();
         if (data.success && Array.isArray(data.prizes)) {
             prizePool = data.prizes.map(p => ({
@@ -3565,13 +3589,8 @@ if (btnSaveLimit) {
             alert("次數限制至少需為 1 次！");
             return;
         }
-        currentDrawLimit = newLim;
+        updateDrawLimitUI(newLim);
         await db.set("app_state", "draw_limit", currentDrawLimit);
-
-        // 即時反映至前端機台
-        const nameInput = document.getElementById("player-name-input");
-        if (nameInput) checkPlayerRealTimeStatus(nameInput.value);
-
         alert(`✅ 抽獎次數限制已成功變更為：每人 ${currentDrawLimit} 次！`);
     };
 }
