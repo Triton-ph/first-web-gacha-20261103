@@ -1342,16 +1342,18 @@
         <!-- 右側：管理面板 -->
         <section class="admin-panel mobile-hidden" id="panel-admin">
 
-            <!-- PIN 上鎖遮罩 (新密碼 adminscope / 提示詞 scopely) -->
+            <!-- 2FA TOTP 上鎖遮罩 (Google Authenticator 雙重認證) -->
             <div id="admin-lock-overlay" class="admin-lock-screen">
-                <h3 class="text-xl font-bold mb-2">🔒 管理後台已安全上鎖</h3>
-                <p class="text-sm" style="color: var(--text-muted);">請輸入管理者密碼進行解鎖操作</p>
-                <p class="text-xs mb-1" style="color: var(--accent-gold); font-weight: bold;">💡 密碼提示詞：scopely</p>
-                <input type="password" id="admin-pin-input" class="pin-input" maxlength="20" placeholder="輸入管理密碼" autocomplete="off" style="width: 220px; letter-spacing: 2px; font-size: 1.1rem;">
-                <div class="flex gap-2 justify-center w-full">
-                    <button id="btn-unlock-admin" class="btn btn-primary px-6">解鎖設定</button>
+                <div style="font-size: 2.8rem; margin-bottom: 6px;">🛡️</div>
+                <h3 class="text-xl font-bold mb-1" style="color: var(--text-main);">管理後台安全認證 (2FA)</h3>
+                <p class="text-sm mb-3" style="color: var(--text-muted);">請開啟手機 <strong>Google Authenticator</strong> 輸入當前 6 位數動態碼</p>
+                
+                <input type="text" id="admin-pin-input" class="pin-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000" autocomplete="off" style="width: 200px; letter-spacing: 8px; font-size: 1.6rem; font-weight: bold; color: #38bdf8;">
+                
+                <div class="flex gap-2 justify-center w-full mt-2">
+                    <button id="btn-unlock-admin" class="btn btn-primary px-8 text-sm font-bold">驗證登入</button>
                 </div>
-                <p id="pin-error-msg" class="text-xs mt-2 hidden" style="color: #ef4444; font-weight: bold;">密碼錯誤，請重試 (提示：scopely)</p>
+                <p id="pin-error-msg" class="text-xs mt-3 hidden" style="color: #ef4444; font-weight: bold;">驗證碼不正確或已過期，請確認手機當前 6 位數！</p>
             </div>
 
             <!-- 後台導覽分頁 -->
@@ -1544,11 +1546,27 @@
                         <p class="text-xs mt-2" style="color: var(--accent-gold);">💡 儲存後立即連動機台實名驗證，動態顯示玩家尚餘抽獎資格與次數。</p>
                     </div>
 
-                    <div class="p-4 rounded border" style="background: rgba(255,255,255,0.02);">
-                        <h4 class="font-bold text-sm mb-2">🔐 管理後台安全設定</h4>
-                        <div class="flex gap-2">
-                            <input type="password" id="setting-new-pin" class="custom-input text-xs" maxlength="20" placeholder="輸入新密碼">
-                            <button id="btn-save-new-pin" class="btn btn-primary text-xs whitespace-nowrap">儲存密碼</button>
+                    <div class="p-4 rounded border" style="background: rgba(56, 189, 248, 0.04); border-color: rgba(56, 189, 248, 0.3);">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <h4 class="font-bold text-sm" style="color: #38bdf8;">🛡️ Google Authenticator 雙重認證 (2FA / TOTP)</h4>
+                                <p class="text-xs" style="color: var(--text-muted);">使用手機 App 每 30 秒自動更換的 6 位數動態驗證碼保護後台</p>
+                            </div>
+                            <button id="btn-show-totp-setup" class="btn btn-subtle text-xs py-1" style="border-color: #38bdf8; color: #38bdf8;">📱 綁定新手機 / 顯示 QR Code</button>
+                        </div>
+
+                        <!-- TOTP 綁定資訊面板 (預設隱藏) -->
+                        <div id="totp-setup-panel" class="p-3 rounded mt-2 hidden" style="background: rgba(0, 0, 0, 0.3); border: 1px dashed rgba(56, 189, 248, 0.4); text-align: center;">
+                            <p class="text-xs font-bold mb-2" style="color: var(--accent-gold);">📲 請使用手機 Google Authenticator 掃描下方 QR Code 進行綁定：</p>
+                            <div style="display: inline-block; padding: 10px; background: #ffffff; border-radius: 12px; margin-bottom: 8px;">
+                                <img id="totp-qr-img" src="" alt="TOTP QR Code" style="width: 170px; height: 170px; display: block;">
+                            </div>
+                            <p class="text-xs mb-1" style="color: var(--text-muted);">或在手機 App 中手動輸入密鑰 (Secret)：</p>
+                            <code id="totp-secret-code" style="font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; color: #38bdf8; background: rgba(255,255,255,0.08); padding: 4px 10px; border-radius: 6px; display: inline-block; margin-bottom: 10px;">載入中...</code>
+                            <div class="flex justify-center gap-2 mt-1">
+                                <button id="btn-regenerate-totp" class="btn btn-subtle text-xs py-1" style="color: #ef4444;">🔄 重新生成全新密鑰</button>
+                                <button id="btn-close-totp-setup" class="btn btn-primary text-xs py-1">收合面板</button>
+                            </div>
                         </div>
                     </div>
 
@@ -3267,16 +3285,113 @@ document.addEventListener("click", (e) => {
 });
 
 // ▬▬▬ [SECTION: ADMIN PIN SECURITY & LOCKING] ▬▬▬
-document.getElementById("btn-unlock-admin").onclick = () => {
-    const input = document.getElementById("admin-pin-input").value;
-    if (input === adminPassword) {
-        document.getElementById("admin-lock-overlay").classList.add("hidden");
-        document.getElementById("pin-error-msg").classList.add("hidden");
-        document.getElementById("admin-pin-input").value = "";
-    } else {
-        document.getElementById("pin-error-msg").classList.remove("hidden");
+document.getElementById("btn-unlock-admin").onclick = async () => {
+    const code = (document.getElementById("admin-pin-input").value || "").trim();
+    const errorMsg = document.getElementById("pin-error-msg");
+    const unlockBtn = document.getElementById("btn-unlock-admin");
+
+    if (code.length !== 6) {
+        errorMsg.textContent = "請輸入完整的 6 位數動態驗證碼！";
+        errorMsg.classList.remove("hidden");
+        return;
+    }
+
+    unlockBtn.disabled = true;
+    unlockBtn.textContent = "驗證中...";
+
+    try {
+        const res = await fetch("/api/admin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                action: "verify_totp",
+                totpCode: code
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById("admin-lock-overlay").classList.add("hidden");
+            errorMsg.classList.add("hidden");
+            document.getElementById("admin-pin-input").value = "";
+            alert("🛡️ Google Authenticator 驗證成功，歡迎進入管理後台！");
+        } else {
+            errorMsg.textContent = data.error || "驗證碼不正確或已過期，請確認手機當前 6 位數！";
+            errorMsg.classList.remove("hidden");
+            document.getElementById("admin-pin-input").select();
+        }
+    } catch (e) {
+        errorMsg.textContent = "驗證連線失敗：" + e.message;
+        errorMsg.classList.remove("hidden");
+    } finally {
+        unlockBtn.disabled = false;
+        unlockBtn.textContent = "驗證登入";
     }
 };
+
+// 支援按下 Enter 鍵直接觸發驗證
+document.getElementById("admin-pin-input").addEventListener("keyup", (e) => {
+    if (e.key === "Enter") {
+        document.getElementById("btn-unlock-admin").click();
+    }
+});
+
+// TOTP 綁定 QR Code 面板互動
+const btnShowTotpSetup = document.getElementById("btn-show-totp-setup");
+if (btnShowTotpSetup) {
+    btnShowTotpSetup.onclick = async () => {
+        const panel = document.getElementById("totp-setup-panel");
+        panel.classList.remove("hidden");
+        btnShowTotpSetup.disabled = true;
+
+        try {
+            const res = await fetch("/api/admin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "get_totp_setup" })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById("totp-qr-img").src = data.qrCodeUrl;
+                document.getElementById("totp-secret-code").textContent = data.secret;
+            }
+        } catch (e) {
+            alert("取得綁定金鑰失敗：" + e.message);
+        } finally {
+            btnShowTotpSetup.disabled = false;
+        }
+    };
+}
+
+const btnCloseTotp = document.getElementById("btn-close-totp-setup");
+if (btnCloseTotp) {
+    btnCloseTotp.onclick = () => {
+        document.getElementById("totp-setup-panel").classList.add("hidden");
+    };
+}
+
+const btnRegenTotp = document.getElementById("btn-regenerate-totp");
+if (btnRegenTotp) {
+    btnRegenTotp.onclick = async () => {
+        if (!confirm("⚠️ 警告：重新生成密鑰後，原本手機 App 上的驗證碼將會失效，必須重新掃描新 QR Code！確定執行？")) return;
+
+        try {
+            const res = await fetch("/api/admin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "regenerate_totp_secret" })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById("totp-qr-img").src = data.qrCodeUrl;
+                document.getElementById("totp-secret-code").textContent = data.secret;
+                alert("✅ 全新 TOTP 金鑰已生成！請立即拿起手機掃描新 QR Code 綁定。");
+            }
+        } catch (e) {
+            alert("生成失敗：" + e.message);
+        }
+    };
+}
 
 // 預設密碼快捷按鈕已按需求移除，僅保留密碼提示詞
 const quickPinBtn = document.getElementById("btn-quick-default-pin");
