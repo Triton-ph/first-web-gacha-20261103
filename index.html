@@ -3146,9 +3146,12 @@ function renderD1PoolEditor() {
 
     let rows = "";
     prizePool.forEach((p) => {
-        const avatarHtml = p.avatarUrl 
-            ? `<img src="${p.avatarUrl}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: block; margin: 0 auto; background: rgba(0,0,0,0.2);">` 
-            : `<span style="font-size: 1.3rem; display: block; text-align: center;">🎁</span>`;
+        const avatarSrc = p.avatarUrl || './LOGO.png';
+        const avatarHtml = `
+            <div class="cursor-pointer" onclick="openImageModal('${p.id}')" title="點擊更換圖片或配色" style="width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid rgba(56, 189, 248, 0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto; overflow: hidden; background: rgba(0,0,0,0.3); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                <img src="${avatarSrc}" id="table-img-${p.id}" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+        `;
 
         rows += `
             <tr style="border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,0.015);">
@@ -3236,7 +3239,8 @@ window.saveSinglePrizeToD1 = async function(prizeId) {
                     rarity: newRarity,
                     weight: p.weight || 1,
                     initial_stock: newInit,
-                    remaining: newRem
+                    remaining: newRem,
+                    image_url: p.avatarUrl || p.image_url || "./LOGO.png"
                 }
             })
         });
@@ -3251,6 +3255,154 @@ window.saveSinglePrizeToD1 = async function(prizeId) {
         alert("連線 D1 失敗：" + e.message);
     }
 };
+
+
+// ▬▬▬ [SECTION: PRIZE IMAGE & COLORWAY CUSTOMIZATION MODAL] ▬▬▬
+let currentEditingPrizeId = null;
+let pendingImageResult = null;
+
+const CAPSULE_SWATCHES = [
+    { name: "烈焰紅", color: "#f43f5e" },
+    { name: "櫻花粉", color: "#ec4899" },
+    { name: "星空紫", color: "#8b5cf6" },
+    { name: "科技藍", color: "#3b82f6" },
+    { name: "青檸綠", color: "#10b981" },
+    { name: "璀璨金", color: "#f59e0b" },
+    { name: "暗夜黑", color: "#1e1b2e" },
+    { name: "霓虹橙", color: "#fb923c" }
+];
+
+function generateCapsuleSvgDataUrl(hexColor) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><radialGradient id="gradTop" cx="30%" cy="30%" r="70%"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="50%" stop-color="#f0f8ff" stop-opacity="0.5"/><stop offset="100%" stop-color="#cbd5e1" stop-opacity="0.35"/></radialGradient><radialGradient id="gradBot" cx="30%" cy="30%" r="70%"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="40%" stop-color="${hexColor}"/><stop offset="100%" stop-color="#000000" stop-opacity="0.85"/></radialGradient></defs><g><circle cx="32" cy="34" r="28" fill="rgba(0,0,0,0.25)"/><path d="M 4 32 A 28 28 0 0 0 60 32 Z" fill="url(#gradBot)"/><path d="M 4 32 A 28 28 0 0 1 60 32 Z" fill="url(#gradTop)"/><ellipse cx="32" cy="32" rx="28" ry="3.5" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="2"/><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/></g></svg>`;
+    return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
+
+window.openImageModal = function(prizeId) {
+    const p = prizePool.find(item => item.id === prizeId);
+    if (!p) return;
+
+    currentEditingPrizeId = prizeId;
+    pendingImageResult = p.avatarUrl || './LOGO.png';
+
+    document.getElementById("img-modal-prize-title").textContent = `正在為【${p.name}】設定外觀圖片或膠囊配色`;
+    const previewImg = document.getElementById("img-modal-preview-img");
+    previewImg.src = pendingImageResult;
+
+    // 渲染配色按鈕
+    const swatchesContainer = document.getElementById("modal-color-swatches");
+    swatchesContainer.innerHTML = "";
+    CAPSULE_SWATCHES.forEach(sw => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.title = sw.name;
+        btn.style.width = "30px";
+        btn.style.height = "30px";
+        btn.style.borderRadius = "50%";
+        btn.style.background = sw.color;
+        btn.style.border = "2px solid rgba(255,255,255,0.7)";
+        btn.style.cursor = "pointer";
+        btn.style.boxShadow = "0 2px 6px rgba(0,0,0,0.3)";
+        btn.style.transition = "transform 0.2s";
+        btn.onmouseover = () => btn.style.transform = "scale(1.2)";
+        btn.onmouseout = () => btn.style.transform = "scale(1)";
+        btn.onclick = () => {
+            const dataUrl = generateCapsuleSvgDataUrl(sw.color);
+            pendingImageResult = dataUrl;
+            previewImg.src = dataUrl;
+        };
+        swatchesContainer.appendChild(btn);
+    });
+
+    document.getElementById("modal-image-backdrop").classList.add("show");
+};
+
+window.closeImageModal = function() {
+    document.getElementById("modal-image-backdrop").classList.remove("show");
+    document.getElementById("modal-file-upload-input").value = "";
+    currentEditingPrizeId = null;
+    pendingImageResult = null;
+};
+
+// 監聽管理員從本機挑選圖片 (壓縮並轉為輕量 WebP DataURL)
+const modalFileInput = document.getElementById("modal-file-upload-input");
+if (modalFileInput) {
+    modalFileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (re) => {
+            const img = new Image();
+            img.onload = () => {
+                const cvs = document.createElement("canvas");
+                const maxDim = 160;
+                let w = img.width, h = img.height;
+                if (w > h && w > maxDim) {
+                    h = Math.round(h * (maxDim / w));
+                    w = maxDim;
+                } else if (h > maxDim) {
+                    w = Math.round(w * (maxDim / h));
+                    h = maxDim;
+                }
+                cvs.width = w;
+                cvs.height = h;
+                const cctx = cvs.getContext("2d");
+                cctx.drawImage(img, 0, 0, w, h);
+                const optimizedDataUrl = cvs.toDataURL("image/webp", 0.85);
+                pendingImageResult = optimizedDataUrl;
+                document.getElementById("img-modal-preview-img").src = optimizedDataUrl;
+            };
+            img.src = re.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+}
+
+// 確認將新圖片或膠囊配色儲存至 D1
+const btnSavePrizeImg = document.getElementById("btn-save-prize-image");
+if (btnSavePrizeImg) {
+    btnSavePrizeImg.onclick = async () => {
+        if (!currentEditingPrizeId || !pendingImageResult) return;
+        const p = prizePool.find(item => item.id === currentEditingPrizeId);
+        if (!p) return;
+
+        btnSavePrizeImg.disabled = true;
+        btnSavePrizeImg.textContent = "儲存中...";
+
+        try {
+            const res = await fetch("/api/admin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "update_prize",
+                    prize: {
+                        id: p.id,
+                        name: p.name,
+                        rarity: p.rarity,
+                        weight: p.weight,
+                        initial_stock: p.initial_stock || p.remaining,
+                        remaining: p.remaining,
+                        image_url: pendingImageResult
+                    }
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                alert(`✅ 已成功將【${p.name}】的圖片外觀儲存至 D1 資料庫！`);
+                closeImageModal();
+                await loadAppState();
+            } else {
+                alert("儲存失敗：" + data.error);
+            }
+        } catch (e) {
+            alert("連線 D1 失敗：" + e.message);
+        } finally {
+            btnSavePrizeImg.disabled = false;
+            btnSavePrizeImg.textContent = "確認儲存至 D1";
+        }
+    };
+}
 
 // ▬▬▬ [SECTION: POPUP MODALS FOR POOL & HISTORY] ▬▬▬
 window.openPoolModal = async function() {
@@ -3910,6 +4062,41 @@ if ('caches' in window) {
     });
 }
 </script>
+
+
+    <!-- 【獎品圖片與配色更換彈窗】 -->
+    <div id="modal-image-backdrop" class="modal-backdrop" style="z-index: 700;">
+        <div class="modal-window" style="max-width: 480px; padding: 2rem 1.5rem; text-align: center;">
+            <button class="modal-close-btn" onclick="closeImageModal()" title="關閉視窗">✕</button>
+            <h3 class="text-xl font-bold mb-1" style="color: var(--primary);">🎨 更換獎項外觀與圖片</h3>
+            <p class="text-xs mb-4" style="color: var(--text-muted);" id="img-modal-prize-title">品項外觀設定</p>
+
+            <!-- 預覽框 -->
+            <div style="width: 80px; height: 80px; border-radius: 16px; margin: 0 auto 1rem auto; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border: 2px solid var(--border-color); overflow: hidden; position: relative;" id="img-modal-preview-box">
+                <img id="img-modal-preview-img" src="./LOGO.png" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+
+            <!-- 選項 A：自行上傳圖片檔案 (自動轉 WebP/Base64) -->
+            <div class="p-3 rounded mb-3 text-left" style="background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color);">
+                <span class="text-xs font-bold" style="color: #38bdf8; display: block; margin-bottom: 4px;">📁 方法一：由本機上傳圖片檔案</span>
+                <input type="file" id="modal-file-upload-input" accept="image/*" class="custom-input text-xs" style="padding: 6px;">
+                <span class="text-xs" style="color: var(--text-dim); display: block; margin-top: 4px;">支援 JPG、PNG、WebP、SVG 或動態圖</span>
+            </div>
+
+            <!-- 選項 B：快速選擇精美膠囊專屬配色 (產生向量色球) -->
+            <div class="p-3 rounded mb-4 text-left" style="background: rgba(255,255,255,0.03); border: 1px dashed var(--accent-gold);">
+                <span class="text-xs font-bold" style="color: var(--accent-gold); display: block; margin-bottom: 6px;">🎨 方法二：快速挑選扭蛋膠囊專屬配色</span>
+                <div class="flex gap-2 justify-center flex-wrap" id="modal-color-swatches">
+                    <!-- 顏色球透過 JS 生成 -->
+                </div>
+            </div>
+
+            <div class="flex gap-3 justify-center">
+                <button class="btn btn-subtle flex-1 py-2 text-xs" onclick="closeImageModal()">取消</button>
+                <button id="btn-save-prize-image" class="btn btn-primary flex-1 py-2 text-xs font-bold">確認儲存至 D1</button>
+            </div>
+        </div>
+    </div>
 
 <!-- /* Last Modified: 2026/10/06 */ -->
 </body>
