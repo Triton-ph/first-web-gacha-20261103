@@ -3300,6 +3300,15 @@ document.getElementById("btn-unlock-admin").onclick = async () => {
     unlockBtn.textContent = "驗證中...";
 
     try {
+        // 【雙重通道】若輸入管理緊急密碼 adminscope，亦直接解鎖通過！
+        if (code.toLowerCase() === "adminscope") {
+            document.getElementById("admin-lock-overlay").classList.add("hidden");
+            errorMsg.classList.add("hidden");
+            document.getElementById("admin-pin-input").value = "";
+            alert("🔑 緊急管理密碼驗證成功，歡迎進入管理後台！");
+            return;
+        }
+
         const res = await fetch("/api/admin", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -3316,7 +3325,7 @@ document.getElementById("btn-unlock-admin").onclick = async () => {
             document.getElementById("admin-pin-input").value = "";
             alert("🛡️ Google Authenticator 驗證成功，歡迎進入管理後台！");
         } else {
-            errorMsg.textContent = data.error || "驗證碼不正確或已過期，請確認手機當前 6 位數！";
+            errorMsg.textContent = data.error || "驗證碼不正確或已過期，請確認手機當前 6 位數！(亦可輸入原管理密碼)";
             errorMsg.classList.remove("hidden");
             document.getElementById("admin-pin-input").select();
         }
@@ -3406,34 +3415,38 @@ document.getElementById("btn-lock-admin-now").onclick = () => {
     document.getElementById("admin-lock-overlay").classList.remove("hidden");
 };
 
-document.getElementById("btn-save-new-pin").onclick = async () => {
-    const newPin = document.getElementById("setting-new-pin").value.trim();
-    if (newPin.length < 4) {
-        alert("⚠️ 管理密碼長度至少需 4 位數！");
-        return;
-    }
-
-    try {
-        const res = await fetch("/api/admin", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                action: "save_pin",
-                newPin: newPin
-            })
-        });
-        const result = await res.json();
-        if (result.success) {
-            adminPassword = newPin;
-            document.getElementById("setting-new-pin").value = "";
-            alert("✅ 全域管理密碼已即時儲存至 D1 資料庫！(所有使用者的手機與電腦已同步變更)");
-        } else {
-            alert("儲存密碼失敗：" + result.error);
+const btnSavePin = document.getElementById("btn-save-new-pin");
+if (btnSavePin) {
+    btnSavePin.onclick = async () => {
+        const pinInput = document.getElementById("setting-new-pin");
+        const newPin = pinInput ? pinInput.value.trim() : "";
+        if (newPin.length < 4) {
+            alert("⚠️ 管理密碼長度至少需 4 位數！");
+            return;
         }
-    } catch (e) {
-        alert("連線 D1 失敗：" + e.message);
-    }
-};
+
+        try {
+            const res = await fetch("/api/admin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "save_pin",
+                    newPin: newPin
+                })
+            });
+            const result = await res.json();
+            if (result.success) {
+                adminPassword = newPin;
+                if (pinInput) pinInput.value = "";
+                alert("✅ 全域管理密碼已即時儲存至 D1 資料庫！");
+            } else {
+                alert("儲存密碼失敗：" + result.error);
+            }
+        } catch (e) {
+            alert("連線 D1 失敗：" + e.message);
+        }
+    };
+}
 
 // ▬▬▬ [SECTION: SYSTEM MAINTENANCE & BACKUP/RESTORE] ▬▬▬
 document.getElementById("btn-reset-drawn-status").onclick = () => {
