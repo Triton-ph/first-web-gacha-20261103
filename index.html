@@ -1427,14 +1427,14 @@
                     <!-- 新增獨立獎項表單 (預設隱藏，點擊按鈕展開) -->
                     <div id="add-prize-form-panel" class="p-3 rounded mb-3 hidden" style="background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(56, 189, 248, 0.35);">
                         <h5 class="font-bold text-xs mb-2" style="color: #38bdf8;">✨ 新增獨立獎項至 D1 資料庫</h5>
-                        <div class="grid gap-2" style="grid-template-columns: 2fr 1fr 1fr 1fr auto;">
-                            <div>
-                                <label class="text-xs" style="color: var(--text-muted); display: block; margin-bottom: 2px;">獎品名稱</label>
-                                <input type="text" id="new-prize-name" class="custom-input text-xs" placeholder="例如：限定皮卡丘吊飾">
+                        <div class="flex flex-wrap gap-2 items-end">
+                            <div style="flex: 2 1 180px;">
+                                <label class="text-xs font-bold" style="color: var(--text-muted); display: block; margin-bottom: 4px;">獎品名稱</label>
+                                <input type="text" id="new-prize-name" class="custom-input text-sm" placeholder="例如：限定皮卡丘吊飾" style="padding: 6px 10px;">
                             </div>
-                            <div>
-                                <label class="text-xs" style="color: var(--text-muted); display: block; margin-bottom: 2px;">稀有度</label>
-                                <select id="new-prize-rarity" class="custom-select text-xs" style="color: #0f172a; background: #ffffff;">
+                            <div style="flex: 1 1 80px;">
+                                <label class="text-xs font-bold" style="color: var(--text-muted); display: block; margin-bottom: 4px;">稀有度</label>
+                                <select id="new-prize-rarity" class="custom-select text-xs" style="color: #000000 !important; background: #ffffff !important; font-weight: bold; padding: 6px;">
                                     <option value="UR" style="color: #000;">UR</option>
                                     <option value="SSR" style="color: #000;">SSR</option>
                                     <option value="SR" style="color: #000;">SR</option>
@@ -1442,35 +1442,37 @@
                                     <option value="N" selected style="color: #000;">N</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="text-xs" style="color: var(--text-muted); display: block; margin-bottom: 2px;">庫存數量</label>
-                                <input type="number" id="new-prize-stock" value="5" min="1" class="custom-input text-xs text-center">
+                            <div style="flex: 1 1 80px;">
+                                <label class="text-xs font-bold" style="color: var(--text-muted); display: block; margin-bottom: 4px;">庫存數量</label>
+                                <input type="number" id="new-prize-stock" value="5" min="1" class="custom-input text-sm text-center font-bold" style="padding: 6px 4px;">
                             </div>
-                            <div>
-                                <label class="text-xs" style="color: var(--text-muted); display: block; margin-bottom: 2px;">抽獎權重</label>
-                                <input type="number" id="new-prize-weight" value="5" min="0.1" step="0.1" class="custom-input text-xs text-center">
+                            <div style="flex: 1 1 80px;">
+                                <label class="text-xs font-bold" style="color: var(--text-muted); display: block; margin-bottom: 4px;">抽獎權重</label>
+                                <input type="number" id="new-prize-weight" value="5" min="0.1" step="0.1" class="custom-input text-sm text-center" style="padding: 6px 4px;">
                             </div>
-                            <div style="display: flex; align-items: flex-end;">
-                                <button id="btn-submit-new-prize" class="btn btn-gold text-xs py-2 px-3 font-bold">確認新增</button>
+                            <div style="flex: 1 1 100px;">
+                                <button id="btn-submit-new-prize" class="btn btn-gold text-xs py-2 w-full font-bold" style="height: 38px;">確認新增</button>
                             </div>
                         </div>
                     </div>
-                    <div id="d1-pool-editor-table" style="max-height: 260px; overflow-y: auto;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                    <div id="d1-pool-editor-table" style="max-height: 380px; overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 8px;">
+                        <table style="width: 100%; min-width: 580px; border-collapse: separate; border-spacing: 0; font-size: 0.86rem;">
                             <thead>
-                                <tr style="background: rgba(255,255,255,0.06); text-align: left;">
-                                    <th style="padding: 6px;">名稱</th>
-                                    <th style="padding: 6px; width: 65px;">稀有度</th>
-                                    <th style="padding: 6px; width: 55px; text-align: center;">剩餘</th>
-                                    <th style="padding: 6px; width: 55px; text-align: center;">總數</th>
-                                    <th style="padding: 6px; width: 60px; text-align: center;">操作</th>
+                                <tr style="background: rgba(255,255,255,0.08); text-align: left;">
+                                    <th style="padding: 10px 8px; width: 44px; text-align: center;">圖片</th>
+                                    <th style="padding: 10px 8px; min-width: 170px;">獎項名稱 (可直接編輯)</th>
+                                    <th style="padding: 10px 8px; width: 85px; text-align: center;">稀有度</th>
+                                    <th style="padding: 10px 8px; width: 75px; text-align: center;">剩餘庫存</th>
+                                    <th style="padding: 10px 8px; width: 75px; text-align: center;">初始總數</th>
+                                    <th style="padding: 10px 8px; width: 110px; text-align: center;">管理操作</th>
                                 </tr>
                             </thead>
                             <tbody id="d1-prizes-edit-tbody">
-                                <tr><td colspan="5" style="text-align:center; padding: 12px; color: var(--text-dim);">載入中...</td></tr>
+                                <tr><td colspan="6" style="text-align:center; padding: 18px; color: var(--text-dim);">載入中...</td></tr>
                             </tbody>
                         </table>
                     </div>
+                    <p class="text-xs mt-1" style="color: var(--text-muted); font-size: 0.72rem;">💡 手機提示：橫向滑動上方表格可完整檢視各項資訊與管理按鈕。</p>
                 </div>
 
                 <div class="flex items-center justify-between mt-3">
@@ -3138,19 +3140,26 @@ function renderD1PoolEditor() {
     if (!tbody) return;
 
     if (!prizePool || prizePool.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:12px; color:var(--text-dim);">D1 資料庫目前為空</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:18px; color:var(--text-dim);">D1 資料庫目前為空</td></tr>`;
         return;
     }
 
     let rows = "";
     prizePool.forEach((p) => {
+        const avatarHtml = p.avatarUrl 
+            ? `<img src="${p.avatarUrl}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 6px; display: block; margin: 0 auto; background: rgba(0,0,0,0.2);">` 
+            : `<span style="font-size: 1.3rem; display: block; text-align: center;">🎁</span>`;
+
         rows += `
-            <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 6px;">
-                    <input type="text" id="edit-name-${p.id}" value="${p.name}" class="custom-input text-xs" style="padding: 2px 6px;">
+            <tr style="border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,0.015);">
+                <td style="padding: 8px 4px; text-align: center; vertical-align: middle;">
+                    ${avatarHtml}
                 </td>
-                <td style="padding: 6px;">
-                    <select id="edit-rarity-${p.id}" class="custom-select text-xs" style="padding: 2px 4px; color: #000000 !important; background-color: #ffffff !important; font-weight: bold;">
+                <td style="padding: 8px 6px; vertical-align: middle;">
+                    <input type="text" id="edit-name-${p.id}" value="${p.name}" class="custom-input text-sm" style="padding: 6px 8px; width: 100%; min-width: 160px; font-weight: 600; border-radius: 6px;">
+                </td>
+                <td style="padding: 8px 6px; text-align: center; vertical-align: middle;">
+                    <select id="edit-rarity-${p.id}" class="custom-select text-xs" style="padding: 6px 8px; color: #000000 !important; background-color: #ffffff !important; font-weight: bold; border-radius: 6px; width: 75px; text-align: center;">
                         <option value="UR" ${p.rarity==="UR"?"selected":""} style="color: #000000 !important; background: #ffffff;">UR</option>
                         <option value="SSR" ${p.rarity==="SSR"?"selected":""} style="color: #000000 !important; background: #ffffff;">SSR</option>
                         <option value="SR" ${p.rarity==="SR"?"selected":""} style="color: #000000 !important; background: #ffffff;">SR</option>
@@ -3158,15 +3167,17 @@ function renderD1PoolEditor() {
                         <option value="N" ${p.rarity==="N"?"selected":""} style="color: #000000 !important; background: #ffffff;">N</option>
                     </select>
                 </td>
-                <td style="padding: 6px;">
-                    <input type="number" id="edit-rem-${p.id}" value="${p.remaining}" min="0" class="custom-input text-xs text-center" style="padding: 2px 4px;">
+                <td style="padding: 8px 6px; text-align: center; vertical-align: middle;">
+                    <input type="number" id="edit-rem-${p.id}" value="${p.remaining}" min="0" class="custom-input text-sm text-center font-bold" style="padding: 6px 4px; width: 65px; border-radius: 6px; color: #38bdf8;">
                 </td>
-                <td style="padding: 6px;">
-                    <input type="number" id="edit-init-${p.id}" value="${p.initial_stock || p.remaining}" min="0" class="custom-input text-xs text-center" style="padding: 2px 4px;">
+                <td style="padding: 8px 6px; text-align: center; vertical-align: middle;">
+                    <input type="number" id="edit-init-${p.id}" value="${p.initial_stock || p.remaining}" min="0" class="custom-input text-sm text-center" style="padding: 6px 4px; width: 65px; border-radius: 6px;">
                 </td>
-                <td style="padding: 6px; text-align: center; white-space: nowrap;">
-                    <button class="btn btn-primary text-xs py-1 px-2" onclick="saveSinglePrizeToD1('${p.id}')">儲存</button>
-                    <button class="btn btn-subtle text-xs py-1 px-2" style="color: #ef4444;" onclick="deleteSinglePrizeFromD1('${p.id}')">刪除</button>
+                <td style="padding: 8px 6px; text-align: center; vertical-align: middle; white-space: nowrap;">
+                    <div class="flex gap-1 justify-center">
+                        <button class="btn btn-primary text-xs py-1 px-3" style="font-weight: bold; border-radius: 6px;" onclick="saveSinglePrizeToD1('${p.id}')">儲存</button>
+                        <button class="btn btn-subtle text-xs py-1 px-2" style="color: #ef4444; border-radius: 6px;" onclick="deleteSinglePrizeFromD1('${p.id}')">刪除</button>
+                    </div>
                 </td>
             </tr>
         `;
